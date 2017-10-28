@@ -19,26 +19,35 @@ def recording_video():
     camera.stop_recording()
 
     print("recording succesfully!")
-    return path_to_video
+    return video_data
 
 
-def server_connect(localpath, remotepath):
+def server_connect(video_data, remotepath):
+    end_of_path = '/VIDEO/' + video_data.strftime("%y.%m.%d") + '/' + user_conf_file.cam_name + \
+                     '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(hostname=user_conf_file.server_hostname,
+    ssh.connect(user_conf_file.server_hostname,
                 port=user_conf_file.server_port,
                 username=user_conf_file.server_username,
                 password=user_conf_file.server_password)
     sftp = ssh.open_sftp()
-    print(localpath)
-    sftp.put(localpath, remotepath)
+
+    if sftp.chdir(os.path.dirname(remotepath + end_of_path +'/')) == False:
+        print("Nie istnieje")
+    else: print("istnieje")
+
+
+    #sftp.mkdir(os.path.dirname(remotepath + end_of_path))
+
+    #sftp.put(os.path.abspath('.') + end_of_path, remotepath + end_of_path)
     sftp.close()
     ssh.close()
     print("connect succesfully!")
 
 
-try:
-    path_to_video = recording_video()
-    server_connect(path_to_video, user_conf_file.video_path)
-except Exception as ex:
-    print(ex)
+#try:
+video_data = recording_video()
+server_connect(video_data, user_conf_file.video_path)
+#except Exception as ex:
+#    print(ex)
