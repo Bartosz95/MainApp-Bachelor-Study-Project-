@@ -42,19 +42,14 @@ def mkdir_server(sftp,directory):
 #wysylanie na serwer
 def send_to_server(file_path):
 
-    #list_of_video = list_of_video.append()
-
     transport = paramiko.Transport((user_conf_file.server_hostname, user_conf_file.server_port))
     transport.connect(username=user_conf_file.server_username, password=user_conf_file.server_password)
     sftp = paramiko.SFTPClient.from_transport(transport)
 
-    end_of_path = '/VIDEO/' + video_data.strftime("%y.%m.%d") + '/' + user_conf_file.cam_name + \
-				  '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
-    dir_path = os.path.dirname(user_conf_file.video_path + end_of_path)
+    path_on_server = user_conf_file.video_path + '/' + os.path.relpath(file_path,os.path.abspath('.'))
+    mkdir_server(sftp, path_on_server)
 
-    mkdir_server(sftp, dir_path)
-
-    sftp.put(file_path, user_conf_file.video_path + end_of_path)
+    sftp.put(file_path, path_on_server)
 
     sftp.close()
     transport.close()
@@ -70,6 +65,7 @@ def list_dir(dir_path):
 
     if os.path.isfile(dir_path):
         print(dir_path)
+        #send_to_server(dir_path)
 
 
 
@@ -91,17 +87,10 @@ class foo(threading.Thread):
 
 
 
-
-
-
-
-
-
 #try:
-video_data = datetime.datetime.now()
-path_to_video = os.path.abspath('.') + '/VIDEO/' + video_data.strftime("%y.%m.%d") + '/' + user_conf_file.cam_name + \
-                         '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
+
 list_dir(os.path.abspath('.')+ '/VIDEO')
+#send_to_server(path_to_video)
 """
 ONE= foo(2,by)
 ONE.start()
