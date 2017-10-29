@@ -7,23 +7,27 @@ import threading   # wielowatkowosc
 import picamera  # obsluga kamery
 import paramiko  # wysylanie na server
 import user_conf_file  # plik z informacjami od uzytkownika
+import filelock
 
 
 # nagrywanie filmu i zapisywanie w ./VIDEO/
-def recording_video():
-    while user_conf_file.video_start_stop:
-        video_data = datetime.datetime.now()
-        path_to_video = os.path.abspath('.') + '/VIDEO/' + video_data.strftime("%y.%m.%d") + '/' + user_conf_file.cam_name + \
-                         '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
+class recording_video(threading.Thread):
+    def __init__(self,path):
+        threading.Thread.__init__(self)
+        def run(self):
+        while user_conf_file.video_start_stop:
+            video_data = datetime.datetime.now()
+            path_to_video = os.path.abspath('.') + '/VIDEO/' + video_data.strftime("%y.%m.%d") + '/' + user_conf_file.cam_name + \
+                             '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
 
-        if os.path.isdir(os.path.dirname(path_to_video)) == False: os.makedirs(os.path.dirname(path_to_video))
+            if os.path.isdir(os.path.dirname(path_to_video)) == False: os.makedirs(os.path.dirname(path_to_video))
 
-        camera = picamera.PiCamera()
-        camera.resolution = (user_conf_file.video_resolution_x, user_conf_file.video_resolution_y)
-        camera.start_recording(path_to_video)
-        camera.wait_recording(user_conf_file.video_time)
-        camera.stop_recording()
-        print("recording succesfully!")
+            camera = picamera.PiCamera()
+            camera.resolution = (user_conf_file.video_resolution_x, user_conf_file.video_resolution_y)
+            camera.start_recording(path_to_video)
+            camera.wait_recording(user_conf_file.video_time)
+            camera.stop_recording()
+            print("recording succesfully!")
 
 
 # tworzenie sciezki na serwerze (funkcja rekurencyjna)
@@ -39,55 +43,54 @@ def mkdir_server(sftp,directory):
             sftp.mkdir(directory)
 
 
-#wysylanie na serwer
-def send_to_server(file_path):
+# wysylanie pojedynczego pliku na serwer
+def send_file(file_path):
 
-    transport = paramiko.Transport((user_conf_file.server_hostname, user_conf_file.server_port))
-    transport.connect(username=user_conf_file.server_username, password=user_conf_file.server_password)
-    sftp = paramiko.SFTPClient.from_transport(transport)
+    if os.path.isfile(file_path):
+        try:
+            transport = paramiko.Transport((user_conf_file.server_hostname, user_conf_file.server_port))
+            transport.connect(username=user_conf_file.server_username, password=user_conf_file.server_password)
+            sftp = paramiko.SFTPClient.from_transport(transport)
 
-    path_on_server = user_conf_file.video_path + '/' + os.path.relpath(file_path, os.path.abspath('.'))
-    mkdir_server(sftp, os.path.dirname(path_on_server))
-    sftp.put(file_path, path_on_server)
+            path_on_server = user_conf_file.video_path + '/' + os.path.relpath(file_path, os.path.abspath('.'))
+            mkdir_server(sftp, os.path.dirname(path_on_server))
+            sftp.put(file_path, path_on_server)
 
-    sftp.close()
-    transport.close()
-    print("send succesfully!")
-
-
-def list_dir(dir_path):
-    if os.path.isdir(dir_path):
-        dir_list = os.listdir(dir_path)
-        for x in dir_list:
-            new_dir_path = dir_path + '/' + x
-            list_dir(new_dir_path)
-
-    if os.path.isfile(dir_path):
-        send_to_server(dir_path)
+            sftp.close()
+            transport.close()
+            return file_path
+            print("send succesfully!")
+        except:
+            raise "Blad w wysylaniu pliku. Sprawdz polaczenie z serwerem lub sciezke uzytkownika"
+    else:
+        raise "Proba wyslania nie pliku"
 
 
+def send_dir(dir_path):
+    try:
+        if os.path.isdir(dir_path):
+            dir_list = os.listdir(dir_path)
+            for new in dir_list:
+                new_dir_path = dir_path + '/' + new
+                send_dir(new_dir_path)
+            os.rmdir(dir_path)
+        if os.path.isfile(dir_path):
+            os.unlink(send_file(dir_path))
+    except Exception as ex:
+        raise ex
 
-class foo(threading.Thread):
 
-    def __init__(self,get_time,path):
+class send_video_to_server(threading.Thread):
+    def __init__(self,path):
         threading.Thread.__init__(self)
-        self.my_time = get_time
-        self.path_to_file=path
-
+        self.dir_path = path
     def run(self):
-        self.path_list = os.path.split(self.path_to_file)
-        print (self.path_list)
-        while self.my_time >= 0:
-            print self.my_time
-            time.sleep(1)
-            self.my_time -= 1
-
-
+        send_dir(self.dir_path)
 
 
 #try:
-
-list_dir(os.path.abspath('.')+ '/VIDEO')
+thread_send = send_video_to_server(os.path.abspath('.') + '/VIDEO')
+thread_send.start()
 #send_to_server(path_to_video)
 """
 ONE= foo(2,by)
