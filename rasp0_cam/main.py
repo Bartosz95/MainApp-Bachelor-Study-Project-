@@ -9,25 +9,40 @@ import paramiko  # wysylanie na server
 import user_conf_file  # plik z informacjami od uzytkownika
 import posixMutexFile
 
+
+
+MUTEX = ""
+def mutex(name):
+    global MUTEX
+    MUTEX = "raz"
+
+
 # nagrywanie filmu i zapisywanie w ./VIDEO/
 class recording_video(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
     def run(self):
-        try:
-            video_data = datetime.datetime.now()
-            path_to_video = os.path.abspath('.') + '/VIDEO/' + video_data.strftime("%y.%m.%d") + '/' + user_conf_file.cam_name + \
-                            '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
-            if os.path.isdir(os.path.dirname(path_to_video)) == False: os.makedirs(os.path.dirname(path_to_video))
+        global MUTEX
+        while 1:
+            try:
+                video_data = datetime.datetime.now()
 
-            camera = picamera.PiCamera()
-            camera.resolution = (user_conf_file.video_resolution_x, user_conf_file.video_resolution_y)
-            camera.start_recording(path_to_video)
-            camera.wait_recording(user_conf_file.video_time)
-            camera.stop_recording()
-            print("recording succesfully!")
-        except:
-             raise "Blad nagrywania"
+                path_to_video = os.path.abspath('.') + '/VIDEO/' + video_data.strftime("%y.%m.%d") + '/' + user_conf_file.cam_name + \
+                                '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
+
+                if os.path.isdir(os.path.dirname(path_to_video)) == False: os.makedirs(os.path.dirname(path_to_video))
+
+                camera = picamera.PiCamera()
+                camera.resolution = (user_conf_file.video_resolution_x, user_conf_file.video_resolution_y)
+
+                MUTEX = path_to_video
+                camera.start_recording(path_to_video)
+                camera.wait_recording(user_conf_file.video_time)
+                camera.stop_recording()
+                MUTEX = ""
+                print("recording succesfully!")
+            except:
+                 raise "Blad nagrywania"
 
 
 # tworzenie sciezki na serwerze (funkcja rekurencyjna)
@@ -67,14 +82,20 @@ def send_file(file_path):
 
 
 def send_dir(dir_path):
+
     try:
-        if os.path.isdir(dir_path):
+        global MUTEX
+        if MUTEX == file_path:
+            time.sleep(user_conf_file.video_time)
+            return send_dir(file_path)
+
+        elif os.path.isdir(dir_path):
             dir_list = os.listdir(dir_path)
             for new in dir_list:
                 new_dir_path = dir_path + '/' + new
                 send_dir(new_dir_path)
             os.rmdir(dir_path)
-        if os.path.isfile(dir_path):
+        elif os.path.isfile(dir_path):
             os.unlink(send_file(dir_path))
     except Exception as ex:
         raise ex
@@ -85,15 +106,18 @@ class send_video_to_server(threading.Thread):
         threading.Thread.__init__(self)
         self.dir_path = path
     def run(self):
-        send_dir(self.dir_path)
+        while 1 :
+            send_dir(self.dir_path)
+            time.sleep(user_conf_file.video_time)
 
 
 #try:
 thread_record = recording_video()
-#thread_send = send_video_to_server(os.path.abspath('.') + '/VIDEO')
+thread_send = send_video_to_server(os.path.abspath('.') + '/VIDEO')
 
 thread_record.start()
-#thread_send.start()
+thread_send.start()
+
 #send_to_server(path_to_video)
 """
 ONE= foo(2,by)

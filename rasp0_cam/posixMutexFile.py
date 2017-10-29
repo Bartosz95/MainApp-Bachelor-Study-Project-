@@ -1,53 +1,30 @@
-import os, fcntl
+import os
 
-class mutexfile:
+class FileLock:
     def __init__(self, filename):
-        if os.access(filename, os.F_OK):
-            self.filename = filename
+        self.filename = filename
+        self.fd = None
+        self.pid = os.getpid()
+
+    def acquire(self):
+        try:
+            self.fd = os.open(self.filename, os.O_CREAT|os.O_EXCL|os.O_RDWR)
+            # Only needed to let readers know who's locked the file
+            os.write(self.fd, "%d" % self.pid)
+            return 1    # return ints so this can be used in older Pythons
+        except OSError:
             self.fd = None
-        else:
-            errmssg = filename + " does not exist. Can't lock non-existent file."
-            raise IOError, errmssg
+            return 0
+
+    def release(self):
+        if not self.fd:
+            return 0
+        try:
+            os.close(self.fd)
+            os.remove(self.filename)
+            return 1
+        except OSError:
+            return 0
 
     def __del__(self):
-        try:
-            self.unlock()
-        except:
-            pass
-        try:
-            self.f.close()
-        except:
-            pass
-
-    def getReadLock(self):
-        self.f = open(self.filename, 'r')
-        self.fd = self.f.fileno()
-        fcntl.lockf(self.fd, fcntl.LOCK_SH)
-
-
-    def getWriteLock(self):
-        self.f = open(self.filename, 'r+')
-        self.fd = self.f.fileno()
-        fcntl.lockf(self.fd, fcntl.LOCK_EX)
-
-
-    def unlock(self):
-        fcntl.lockf(self.fd, fcntl.LOCK_UN)
-        self.f.close()
-        self.fd = None
-
-    def flock(self, flag):
-        '''flags are:
-        LOCK_UN - unlock
-        LOCK_SH - acquire a shared (or read) lock
-        LOCK_EX - acquire an exclusive (or write) lock
-        '''
-        if flag == 'LOCK_SH':
-            self.getReadLock()
-        elif flag == 'LOCK_EX':
-            self.getWriteLock()
-        elif flag == 'LOCK_UN':
-            self.unlock()
-        else:
-            errmssg = "The flag " + flag + " is not implemented for flock"
-            raise NotImplementedError, errmssg
+        self.release()
