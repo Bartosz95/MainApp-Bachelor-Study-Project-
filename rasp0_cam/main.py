@@ -7,19 +7,17 @@ import threading   # wielowatkowosc
 import picamera  # obsluga kamery
 import paramiko  # wysylanie na server
 import user_conf_file  # plik z informacjami od uzytkownika
-import filelock
-
+import posixMutexFile
 
 # nagrywanie filmu i zapisywanie w ./VIDEO/
 class recording_video(threading.Thread):
-    def __init__(self,path):
+    def __init__(self):
         threading.Thread.__init__(self)
-        def run(self):
-        while user_conf_file.video_start_stop:
+    def run(self):
+        try:
             video_data = datetime.datetime.now()
             path_to_video = os.path.abspath('.') + '/VIDEO/' + video_data.strftime("%y.%m.%d") + '/' + user_conf_file.cam_name + \
-                             '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
-
+                            '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
             if os.path.isdir(os.path.dirname(path_to_video)) == False: os.makedirs(os.path.dirname(path_to_video))
 
             camera = picamera.PiCamera()
@@ -28,6 +26,8 @@ class recording_video(threading.Thread):
             camera.wait_recording(user_conf_file.video_time)
             camera.stop_recording()
             print("recording succesfully!")
+        except:
+             raise "Blad nagrywania"
 
 
 # tworzenie sciezki na serwerze (funkcja rekurencyjna)
@@ -89,8 +89,11 @@ class send_video_to_server(threading.Thread):
 
 
 #try:
-thread_send = send_video_to_server(os.path.abspath('.') + '/VIDEO')
-thread_send.start()
+thread_record = recording_video()
+#thread_send = send_video_to_server(os.path.abspath('.') + '/VIDEO')
+
+thread_record.start()
+#thread_send.start()
 #send_to_server(path_to_video)
 """
 ONE= foo(2,by)
