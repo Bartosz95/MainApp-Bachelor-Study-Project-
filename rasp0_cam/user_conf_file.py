@@ -7,9 +7,10 @@ server_password = 'mampiernik'
 
 video_path = '/home/pi/Videos/MONITORING'  # zdefiniowana sciezka serveru
 video_format = 'h264'  # rozszerzenie pliku np h264
-video_time = 1  # czas nagrywania w sekundach
+video_time = 2  # czas nagrywania w sekundach
 video_resolution_x = 640
 video_resolution_y = 480
+video_start_stop = True
 
 cam_name = 'CAM1'  # nazwa kamery
 data_format = "%y.%m.%d %H:%M:%S" # format daty (nazwy
