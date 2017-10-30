@@ -12,17 +12,16 @@ import posixMutexFile
 
 
 MUTEX = ""
-def mutex(name):
-    global MUTEX
-    MUTEX = "raz"
-
+MUTEX_VIDEO_DIR = ""
 
 # nagrywanie filmu i zapisywanie w ./VIDEO/
 class recording_video(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
+        self.camera = picamera.PiCamera()
     def run(self):
         global MUTEX
+        global MUTEX_VIDEO_DIR
         while 1:
             try:
                 video_data = datetime.datetime.now()
@@ -30,19 +29,21 @@ class recording_video(threading.Thread):
                 path_to_video = os.path.abspath('.') + '/VIDEO/' + video_data.strftime("%y.%m.%d") + '/' + user_conf_file.cam_name + \
                                 '/' + video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
 
+                MUTEX_VIDEO_DIR = os.path.dirname(path_to_video)
+
                 if os.path.isdir(os.path.dirname(path_to_video)) == False: os.makedirs(os.path.dirname(path_to_video))
 
-                camera = picamera.PiCamera()
-                camera.resolution = (user_conf_file.video_resolution_x, user_conf_file.video_resolution_y)
+                self.camera.resolution = (user_conf_file.video_resolution_x, user_conf_file.video_resolution_y)
 
                 MUTEX = path_to_video
-                camera.start_recording(path_to_video)
-                camera.wait_recording(user_conf_file.video_time)
-                camera.stop_recording()
+                self.camera.start_recording(path_to_video)
+                self.camera.wait_recording(user_conf_file.video_time)
+                self.camera.stop_recording()
                 MUTEX = ""
-                print("recording succesfully!")
-            except:
-                 raise "Blad nagrywania"
+                print("recording")
+                print(path_to_video)
+            except Exception as ex:
+                 print(ex)
 
 
 # tworzenie sciezki na serwerze (funkcja rekurencyjna)
@@ -73,10 +74,10 @@ def send_file(file_path):
 
             sftp.close()
             transport.close()
-            return file_path
-            print("send succesfully!")
-        except:
-            raise "Blad w wysylaniu pliku. Sprawdz polaczenie z serwerem lub sciezke uzytkownika"
+            print("send")
+            print(file_path)
+        except Exception as ex:
+            raise ex
     else:
         raise "Proba wyslania nie pliku"
 
@@ -85,18 +86,18 @@ def send_dir(dir_path):
 
     try:
         global MUTEX
-        if MUTEX == file_path:
-            time.sleep(user_conf_file.video_time)
-            return send_dir(file_path)
+        global MUTEX_VIDEO_DIR
 
-        elif os.path.isdir(dir_path):
+        if os.path.isdir(dir_path):
             dir_list = os.listdir(dir_path)
             for new in dir_list:
                 new_dir_path = dir_path + '/' + new
                 send_dir(new_dir_path)
-            os.rmdir(dir_path)
-        elif os.path.isfile(dir_path):
-            os.unlink(send_file(dir_path))
+        if os.path.isfile(dir_path):
+            if MUTEX != dir_path:
+                send_file(dir_path)
+            else:
+                print("MUTEX")
     except Exception as ex:
         raise ex
 
@@ -107,7 +108,10 @@ class send_video_to_server(threading.Thread):
         self.dir_path = path
     def run(self):
         while 1 :
-            send_dir(self.dir_path)
+            try:
+                send_dir(self.dir_path)
+            except Exception as ex:
+                print(ex)
             time.sleep(user_conf_file.video_time)
 
 
@@ -116,6 +120,7 @@ thread_record = recording_video()
 thread_send = send_video_to_server(os.path.abspath('.') + '/VIDEO')
 
 thread_record.start()
+#time.sleep(9)
 thread_send.start()
 
 #send_to_server(path_to_video)

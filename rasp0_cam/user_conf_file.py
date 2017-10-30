@@ -7,7 +7,7 @@ server_password = 'mampiernik'
 
 video_path = '/home/pi/Videos/MONITORING'  # zdefiniowana sciezka serveru
 video_format = 'h264'  # rozszerzenie pliku np h264
-video_time = 10  # czas nagrywania w sekundach
+video_time = 3  # czas nagrywania w sekundach
 video_resolution_x = 640
 video_resolution_y = 480
 video_start_stop = True
