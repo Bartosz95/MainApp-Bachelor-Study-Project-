@@ -2,7 +2,7 @@ power = True
 
 server_hostname = '192.168.0.10'
 server_port = 22
-server_username = 'pi'
+server_username = 'root'
 server_password = 'mampiernik'
 
 video_path_on_server = "/var/www/FlaskApp/FlaskApp/static"  # zdefiniowana sciezka na serwerze

@@ -9,9 +9,7 @@ import threading   # wielowatkowosc
 import picamera  # obsluga kamery
 import paramiko  # wysylanie na server
 import user_conf_file  # plik z informacjami od uzytkownika
-import posixMutexFile
 import subprocess # konvertowanie pliku video
-import datetime as dt
 
 MUTEX = ""
 START = True
@@ -28,7 +26,6 @@ def start_recording(camera, video_data):
     folder = user_conf_file.cam_name
     path_to_video = os.path.join(path_to_video, folder)
     path_to_video = os.path.join(path_to_video, file_name)
-    print(path_to_video)
     MUTEX = path_to_video
 
     if os.path.isdir(os.path.dirname(path_to_video)) == False: os.makedirs(os.path.dirname(path_to_video))
@@ -47,7 +44,7 @@ def stop_recording(camera):
 # zmiana formatu z h264 na mp4
 def convert_recording(path_to_video):
     head, tail = os.path.split(path_to_video)
-    video_name = os.path.splitext(tail)[0]+ ".mp4"
+    video_name = os.path.splitext(tail)[0] + ".mp4"
     new_path_to_video = os.path.join(head, video_name)
     command = "MP4Box -add {} {}".format(path_to_video, new_path_to_video)
     try:
@@ -131,9 +128,7 @@ def send_dir(dir_path):
                 send_dir(new_dir_path)
         if os.path.isfile(dir_path):
             if MUTEX != dir_path:
-                print(dir_path)
                 new_dir_path = convert_recording(dir_path)
-                print(new_dir_path)
 
                 send_file(new_dir_path)
                 os.unlink(new_dir_path) # usuwanie wyslanego pliku
@@ -157,14 +152,14 @@ class send_video_to_server(threading.Thread):
                 send_dir(self.dir_path)
             except Exception as ex:
                 print(ex)
-            print("all send")
             time.sleep(user_conf_file.video_time*0.5)
 
+
 try:
-    thread_record = recording_video()
+    #thread_record = recording_video()
     thread_send = send_video_to_server(os.path.join(user_conf_file.video_path_on_camera, 'VIDEO'))
 
-    thread_record.start()
+    #thread_record.start()
     thread_send.start()
     while 1:
         x = int(input())
