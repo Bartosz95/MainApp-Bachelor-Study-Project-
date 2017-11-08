@@ -13,74 +13,72 @@ import posixMutexFile
 import subprocess # konvertowanie pliku video
 import datetime as dt
 
+
+
+
+
 MUTEX = ""
 START = True
 
 
-def start_recording(camera, video_data):
+def start_recording(camera,video_data):
     global MUTEX
-    file_name = video_data.strftime(user_conf_file.data_format) + '.' + user_conf_file.video_format
-
-    folder = "VIDEO"
-    path_to_video = os.path.join(user_conf_file.video_path_on_camera, folder)
-    folder = video_data.strftime("%y-%m-%d")
-    path_to_video = os.path.join(path_to_video, folder)
-    folder = user_conf_file.cam_name
-    path_to_video = os.path.join(path_to_video, folder)
-    path_to_video = os.path.join(path_to_video, file_name)
-    print(path_to_video)
+    path_to_video = os.path.abspath('.') + '/VIDEO/' + video_data.strftime("%y.%m.%d") + \
+                         '/' + user_conf_file.cam_name + '/' + \
+                         video_data.strftime(user_conf_file.data_format) + '.' + \
+                         user_conf_file.video_format
     MUTEX = path_to_video
-
-    if os.path.isdir(os.path.dirname(path_to_video)) == False: os.makedirs(os.path.dirname(path_to_video))
+    if os.path.isdir(os.path.dirname(path_to_video)) == False: 
+		os.makedirs(os.path.dirname(path_to_video))
 
     camera.resolution = (user_conf_file.video_resolution_x, user_conf_file.video_resolution_y)
-    camera.framerate = user_conf_file.video_framerate
+	#camera.framerate = user_conf_file.video_framerate
     camera.start_recording(path_to_video)
+    print("start ------ ", path_to_video)
+    convert_recording(path_to_video)
 
 
 def stop_recording(camera):
     global MUTEX
     camera.stop_recording()
+    convert_recording(path_to_video)
     MUTEX = ""
+    print("stop recordking")
 
-
-# zmiana formatu z h264 na mp4
+#convert form .264 to .mp4
 def convert_recording(path_to_video):
-    head, tail = os.path.split(path_to_video)
-    video_name = os.path.splitext(tail)[0]+ ".mp4"
-    new_path_to_video = os.path.join(head, video_name)
-    command = "MP4Box -add {} {}".format(path_to_video, new_path_to_video)
-    try:
-        output = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True)
-        os.remove(path_to_video)
-        return new_path_to_video
-    except subprocess.CalledProcessError as e:
-        print('FAIL:\ncmd:{}\noutput:{}'.format(e.cmd, e.output))
-
+	head, tail = os.path.split(path_to_video)
+	command = "MP4Box -add {} {}.mp4".format(path_to_video, os.path.splitext(tail)[0])
+	try:
+		output = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True)
+	except subprocess.CalledProcessError as e:
+		print('FAIL:\ncmd:{}\noutput:{}'.format(e.cmd, e.output))
+	os.remove(path_to_video)
+	print("convert")
 
 # nagrywanie filmu i zapisywanie w ./VIDEO/
 class recording_video(threading.Thread):
-
     def __init__(self):
         threading.Thread.__init__(self)
         global START
         self.camera = picamera.PiCamera()
         self.video_data = datetime.datetime.now()
-
     def run(self):
+
         self.video_data = datetime.datetime.now()
         start_recording(self.camera, self.video_data)
+
         while START:
             try:
                 if self.video_data + datetime.timedelta(seconds=user_conf_file.video_time) < datetime.datetime.now():
                     stop_recording(self.camera)
+					#convert_recording(path_to_video)
                     self.video_data = datetime.datetime.now()
                     start_recording(self.camera, self.video_data)
             except Exception as ex:
-                print(ex)
+                 print(ex)
             time.sleep(2)
         stop_recording(self.camera)
-
 
 
 # tworzenie sciezki na serwerze (funkcja rekurencyjna)
@@ -111,13 +109,15 @@ def send_file(file_path):
 
             sftp.close()
             transport.close()
-        except Exception as e:
-            raise e
+            print("send ------- ", file_path)
+
+
+        except Exception as ex:
+            raise ex
     else:
         raise "U try send not file"
 
 
-# przeszukuje i wysyla pliki z podanej biblioteki
 def send_dir(dir_path):
 
     try:
@@ -131,28 +131,21 @@ def send_dir(dir_path):
                 send_dir(new_dir_path)
         if os.path.isfile(dir_path):
             if MUTEX != dir_path:
-                print(dir_path)
-                new_dir_path = convert_recording(dir_path)
-                print(new_dir_path)
-
-                send_file(new_dir_path)
-                os.unlink(new_dir_path) # usuwanie wyslanego pliku
+                send_file(dir_path)
+                os.unlink(dir_path) # usuwanie wyslanego pliku
             else:
-                print("MUTEX ------ ", dir_path)
-    except Exception as e:
-        raise e
+                print("MUTEX ------ ",dir_path)
+    except Exception as ex:
+        raise ex
 
 
-# watek wysylajacy na serwer
 class send_video_to_server(threading.Thread):
-
     def __init__(self,path):
         threading.Thread.__init__(self)
         global START
         self.dir_path = path
-
     def run(self):
-        while START:
+        while START :
             try:
                 send_dir(self.dir_path)
             except Exception as ex:
@@ -160,17 +153,18 @@ class send_video_to_server(threading.Thread):
             print("all send")
             time.sleep(user_conf_file.video_time*0.5)
 
+
 try:
     thread_record = recording_video()
-    thread_send = send_video_to_server(os.path.join(user_conf_file.video_path_on_camera, 'VIDEO'))
+    thread_send = send_video_to_server(os.path.abspath('.') + '/VIDEO')
 
     thread_record.start()
     thread_send.start()
+
     while 1:
         x = int(input())
         if x == 0:
             START = False
-            exit(0)
 
 except Exception as ex:
     print(ex)
