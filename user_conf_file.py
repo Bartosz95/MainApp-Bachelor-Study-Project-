@@ -5,7 +5,7 @@ server_port = 22
 server_username = 'pi'
 server_password = 'mampiernik'
 
-video_path = '/home/pi/Videos/MONITORING'  # zdefiniowana sciezka na serwerze
+video_path_on_server = "/var/www/FlaskApp/FlaskApp/static"  # zdefiniowana sciezka na serwerze
 video_path_on_camera = "/home/pi/Documents/inzynierka/rasp0_cam"  # zdefiniowana sciezka na kamerze
 video_format = 'h264'  # rozszerzenie pliku np h264
 video_time = 3  # czas nagrywania w sekundach

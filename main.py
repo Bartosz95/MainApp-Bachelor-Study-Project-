@@ -105,7 +105,7 @@ def send_file(file_path):
             transport.connect(username=user_conf_file.server_username, password=user_conf_file.server_password)
             sftp = paramiko.SFTPClient.from_transport(transport)
 
-            path_on_server = user_conf_file.video_path + '/' + os.path.relpath(file_path, os.path.abspath('.'))
+            path_on_server = user_conf_file.video_path_on_server + '/' + os.path.relpath(file_path, os.path.abspath('.'))
             mkdir_server(sftp, os.path.dirname(path_on_server))
             sftp.put(file_path, path_on_server)
 
