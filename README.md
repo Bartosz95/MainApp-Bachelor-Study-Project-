@@ -5,6 +5,7 @@ This project allows you to monitor your house interior.
 It checks your air parameters like temperature, humidity and pressure and records the rooms with cameras. 
 Data is collected in a database and is displayed for users on the browser.
 System consists of one server which gives you access to data and at least one sensor which collects data.
+It was written in 2017.
 
 ## Technologies
 - Python
