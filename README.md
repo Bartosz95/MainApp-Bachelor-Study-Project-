@@ -1,4 +1,4 @@
-# House interior monitor
+# House Interior Monitoring System
 
 ## Abstract
 This project allows you to monitor your house interior. 
